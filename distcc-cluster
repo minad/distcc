@@ -1,0 +1,58 @@
+#!/bin/sh
+
+config=()
+read_config() {
+  while read line; do
+    config[${#config[*]}]=$line
+  done < /etc/distcc/ssh-hosts
+}
+
+start() {
+  read_config
+  for i in ${!config[*]}; do
+    array=(${config[$i]})
+    host=${array[0]}
+    port=${array[1]}
+    path=${array[2]}
+    echo "Starting distccd on $host..."
+    ssh -q -f -L $port:localhost:$port $host "env PATH=$path distccd --daemon --no-detach --nice 10 --jobs 3 --port $port --allow 127.0.0.1 2>&1" 2>&1 > /dev/null &
+    SSH_PID=$!
+    (sleep 5; kill $SSH_PID >/dev/null 2>&1) &
+    wait $SSH_PID
+  done
+  echo "Cluster up and running!"
+}
+
+stop() {
+  read_config
+  for i in ${!config[*]}; do
+    array=(${config[$i]})
+    host=${array[0]}
+    port=${array[1]}
+    path=${array[2]}
+    echo "Killing distccd on $host..."
+    ssh -q $host "killall distccd  2>&1 > /dev/null" 2>&1 > /dev/null &
+    SSH_PID=$!
+    (sleep 5; kill $SSH_PID >/dev/null 2>&1) &
+    wait $SSH_PID
+  done
+  echo "Cluster stopped"
+}
+
+case "$1" in
+  start)
+    start 
+    ;;
+  stop)
+    stop    
+    ;;
+  restart)
+    stop
+    start        
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|status|restart}"
+    exit 1
+    ;;
+esac
+

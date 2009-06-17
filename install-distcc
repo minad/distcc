@@ -1,0 +1,123 @@
+#!/bin/sh
+
+# Configuration
+DISTCC_VERSION=3.1
+DISTCC_URL=http://distcc.googlecode.com/files
+BINUTILS_VERSION=2.18
+BINUTILS_URL=http://ftp.gnu.org/gnu/binutils
+GCC_VERSION=4.3.2
+GCC_URL=ftp://ftp.fu-berlin.de/unix/languages/gcc/releases
+GCC_TARGET=i686-pc-linux-gnu
+GMP_VERSION=4.2.4
+GMP_URL=ftp://ftp.gnu.org/gnu/gmp
+MPFR_VERSION=2.4.1
+MPFR_URL=http://www.mpfr.org/mpfr-current
+
+cleanup() {
+  rm -rf $TEMP_DIR
+}
+
+die() {
+  echo $1
+  cleanup
+  exit 1
+}
+
+download() {
+  file=$1
+  url=$2
+  if [[ ! -e $file ]]; then
+    echo "Downloading $url..."
+    wget -nv -O $file $url
+  fi
+}
+
+build() {
+  echo "Configuring..."
+  ./configure --prefix $DEST_DIR "$@" || die "Configure failed"
+  echo "Building..."
+  make # || die "Building failed"
+  echo "Installing..."
+  make install # || die "Installation failed"
+  rm -rf $DEST_DIR/man $DEST_DIR/share/doc $DEST_DIR/info
+}
+
+unpack() {
+  echo "Unpacking $1..."  
+  tar -C $TEMP_DIR -xf $1 || die "Unpacking $1 failed"
+}
+
+mkdir() {
+  /bin/mkdir -p "$@" || die "Mkdir failed"
+}
+
+if [[ $# != 2 ]]; then
+  echo "Usage: $0 <target> <directory>"
+  echo "Example targets: i686-pc-linux-gnu, x86_64-pc-linux-gnu"
+  exit 1
+fi
+
+trap cleanup SIGINT
+
+TARGET=$1
+DEST_DIR=$2
+
+mkdir $DEST_DIR
+DEST_DIR=`cd $DEST_DIR; pwd`
+
+TEMP_DIR=/tmp/$$-$USER
+
+mkdir $TEMP_DIR
+echo "Working in $TEMP_DIR"
+
+DISTCC_NAME=distcc-$DISTCC_VERSION
+DISTCC_FILE=$TEMP_DIR/$DISTCC_NAME.tar.bz2
+DISTCC_URL=$DISTCC_URL/$DISTCC_NAME.tar.bz2
+
+GCC_NAME=gcc-$GCC_VERSION
+GCC_FILE=$TEMP_DIR/$GCC_NAME.tar.bz2
+GCC_URL=$GCC_URL/$GCC_NAME/$GCC_NAME.tar.bz2
+
+GMP_NAME=gmp-$GMP_VERSION
+GMP_FILE=$TEMP_DIR/$GMP_NAME.tar.bz2
+GMP_URL=$GMP_URL/$GMP_NAME.tar.bz2
+
+MPFR_NAME=mpfr-$MPFR_VERSION
+MPFR_FILE=$TEMP_DIR/$MPFR_NAME.tar.bz2
+MPFR_URL=$MPFR_URL/$MPFR_NAME.tar.bz2
+
+BINUTILS_NAME=binutils-$BINUTILS_VERSION
+BINUTILS_FILE=$TEMP_DIR/$BINUTILS_NAME.tar.bz2
+BINUTILS_URL=$BINUTILS_URL/$BINUTILS_NAME.tar.bz2
+
+if [[ ! -e $DEST_DIR/bin/distcc ]]; then
+  download $DISTCC_FILE $DISTCC_URL
+  unpack $DISTCC_FILE
+  (cd $TEMP_DIR/$DISTCC_NAME; build)
+fi
+
+if [[ ! -e $DEST_DIR/bin/$TARGET-as ]]; then
+  download $BINUTILS_FILE $BINUTILS_URL
+  unpack $BINUTILS_FILE
+  (cd $TEMP_DIR/$BINUTILS_NAME; build --target $TARGET)
+fi
+
+if [[ ! -e $DEST_DIR/bin/$TARGET-gcc ]]; then
+  download $GCC_FILE $GCC_URL
+  download $GMP_FILE $GMP_URL
+  download $MPFR_FILE $MPFR_URL
+
+  unpack $GCC_FILE
+  unpack $MPFR_FILE
+  mv $TEMP_DIR/$MPFR_NAME $TEMP_DIR/$GCC_NAME/mpfr
+  unpack $GMP_FILE
+  mv $TEMP_DIR/$GMP_NAME $TEMP_DIR/$GCC_NAME/gmp
+  
+  (cd $TEMP_DIR/$GCC_NAME; build --enable-languages=c,c++ --target=$TARGET --enable-threads=posix)
+fi
+
+(cd $DEST_DIR; find -type f | sort | xargs md5sum > MD5SUMS)
+
+cleanup
+exit 0
+
