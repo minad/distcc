@@ -14,8 +14,12 @@ start() {
     host=${array[0]}
     port=${array[1]}
     path=${array[2]}
-    echo "Starting distccd on $host..."
-    ssh -q -f -L $port:localhost:$port $host "env PATH=$path distccd --daemon --no-detach --nice 10 --jobs 3 --port $port --allow 127.0.0.1 2>&1" 2>&1 > /dev/null &
+    log=${array[3]}
+    tmp=${array[4]}
+    DISTCC_SAVE_TEMPS=${DISTCC_SAVE_TEMPS:-1}
+    echo "Starting distccd on $host:$port..."
+    cmd="env $DISTCC_SAVE_TEMPS TMPDIR=$tmp PATH=$path distccd --verbose --log-file=$log --daemon --no-detach --nice 10 --jobs 3 --port $port --allow 127.0.0.1 2>&1"
+    ssh -q -f -L "$port:localhost:$port" "$host" "$cmd" 2>&1 > /dev/null &
     SSH_PID=$!
     (sleep 5; kill $SSH_PID >/dev/null 2>&1) &
     wait $SSH_PID
