@@ -1,0 +1,26 @@
+Installation on compile servers
+-------------------------------
+
+At first you have to install a gcc-toolchain on the compile servers with the command 'install-distcc <target> <dir>'.
+
+  Example: ./install-distcc i686-pc-linux-gnu /home/user/distcc-i686-pc-linux-gnu
+
+You should edit the software versions in the file install-distcc to match your local installation.
+
+Installation on compile client (local machine)
+----------------------------------------------
+
+You have to create the distcc configuration on the client in /etc/distcc.
+
+/etc/distcc/hosts with the format (host:port/processes)
+
+localhost:30001/3
+localhost:30002/3
+
+/etc/distcc/ssh-hosts with the format (user@host port path logfile tmpdir)
+
+user@server1 30001 /home/user/distcc-i686-pc-linux-gnu/bin:/bin:/usr/bin:/usr/local/bin /home/user/distcc/log/1.log /home/user/distcc/tmp
+user@server2 30002 /home/user/distcc-i686-pc-linux-gnu/bin:/bin:/usr/bin:/usr/local/bin /home/user/distcc/log/2.log /home/user/distcc/tmp
+
+Then start the compile cluster with ./distcc-cluster start.
+
