@@ -43,7 +43,7 @@ build() {
 }
 
 unpack() {
-  echo "Unpacking $1..."  
+  echo "Unpacking $1..."
   tar -C $TEMP_DIR -xf $1 || die "Unpacking $1 failed"
 }
 
@@ -112,7 +112,7 @@ if [[ ! -e $DEST_DIR/bin/$TARGET-gcc ]]; then
   mv $TEMP_DIR/$MPFR_NAME $TEMP_DIR/$GCC_NAME/mpfr
   unpack $GMP_FILE
   mv $TEMP_DIR/$GMP_NAME $TEMP_DIR/$GCC_NAME/gmp
-  
+
   (cd $TEMP_DIR/$GCC_NAME; build --enable-languages=c,c++ --target=$TARGET --enable-threads=posix)
 fi
 

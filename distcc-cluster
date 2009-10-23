@@ -7,10 +7,8 @@ read_config() {
   done < /etc/distcc/ssh-hosts
 }
 
-start() {
-  read_config
-  for i in ${!config[*]}; do
-    array=(${config[$i]})
+start_server() {
+    array=(${config[$1]})
     host=${array[0]}
     port=${array[1]}
     path=${array[2]}
@@ -18,11 +16,24 @@ start() {
     tmp=${array[4]}
     DISTCC_SAVE_TEMPS=${DISTCC_SAVE_TEMPS:-0}
     echo "Starting distccd on $host:$port..."
-    cmd="env DISTCC_SAVE_TEMPS=$DISTCC_SAVE_TEMPS TMPDIR=$tmp PATH=$path distccd --verbose --log-file=$log --daemon --no-detach --nice 10 --jobs 3 --port $port --allow 127.0.0.1 2>&1"
-    ssh -q -f -L "$port:localhost:$port" "$host" "$cmd" 2>&1 > /dev/null &
-    SSH_PID=$!
-    (sleep 5; kill $SSH_PID >/dev/null 2>&1) &
-    wait $SSH_PID
+    cmd="env DISTCC_SAVE_TEMPS=$DISTCC_SAVE_TEMPS TMPDIR=$tmp PATH=$path distccd --verbose --log-file=$log --daemon --no-detach --nice 10 --jobs 10 --port $port --allow 127.0.0.1 2>&1"
+    ssh -q -f -L "$port:localhost:$port" "$host" "$cmd" 2>&1 > /dev/null
+}
+
+stop_server() {
+    array=(${config[$1]})
+    host=${array[0]}
+    port=${array[1]}
+    path=${array[2]}
+    echo "Killing distccd on $host:$port..."
+    cmd="killall distccd 2>&1 > /dev/null"
+    ssh -q $host $cmd 2>&1 > /dev/null &
+}
+
+start() {
+  read_config
+  for i in ${!config[*]}; do
+      start_server $i
   done
   echo "Cluster up and running!"
 }
@@ -30,33 +41,32 @@ start() {
 stop() {
   read_config
   for i in ${!config[*]}; do
-    array=(${config[$i]})
-    host=${array[0]}
-    port=${array[1]}
-    path=${array[2]}
-    echo "Killing distccd on $host..."
-    ssh -q $host "killall distccd  2>&1 > /dev/null" 2>&1 > /dev/null &
-    SSH_PID=$!
-    (sleep 5; kill $SSH_PID >/dev/null 2>&1) &
-    wait $SSH_PID
+      stop_server $i
   done
   echo "Cluster stopped"
 }
 
+restart() {
+  read_config
+  for i in ${!config[*]}; do
+    stop_server $i
+    start_server $i
+  done
+  echo "Cluster restarted"
+}
+
 case "$1" in
   start)
-    start 
+    start
     ;;
   stop)
-    stop    
+    stop
     ;;
   restart)
-    stop
-    start        
+    restart
     ;;
   *)
-    echo "Usage: $0 {start|stop|status|restart}"
+    echo "Usage: $0 {start|stop|restart}"
     exit 1
     ;;
 esac
-
