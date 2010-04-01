@@ -34,7 +34,9 @@ download() {
 
 build() {
   echo "Configuring..."
-  ./configure --prefix $DEST_DIR "$@" || die "Configure failed"
+  path=$1
+  shift 1
+  $path/configure --prefix $DEST_DIR "$@" || die "Configure failed"
   echo "Building..."
   make -j5 # || die "Building failed"
   echo "Installing..."
@@ -93,13 +95,13 @@ BINUTILS_URL=$BINUTILS_URL/$BINUTILS_NAME.tar.bz2
 if [[ ! -e $DEST_DIR/bin/distcc ]]; then
   download $DISTCC_FILE $DISTCC_URL
   unpack $DISTCC_FILE
-  (cd $TEMP_DIR/$DISTCC_NAME; build)
+  (cd $TEMP_DIR/$DISTCC_NAME; build .)
 fi
 
 if [[ ! -e $DEST_DIR/bin/$TARGET-as ]]; then
   download $BINUTILS_FILE $BINUTILS_URL
   unpack $BINUTILS_FILE
-  (cd $TEMP_DIR/$BINUTILS_NAME; build --target $TARGET)
+  (cd $TEMP_DIR/$BINUTILS_NAME; build . --target $TARGET)
 fi
 
 if [[ ! -e $DEST_DIR/bin/$TARGET-gcc ]]; then
@@ -112,8 +114,10 @@ if [[ ! -e $DEST_DIR/bin/$TARGET-gcc ]]; then
   mv $TEMP_DIR/$MPFR_NAME $TEMP_DIR/$GCC_NAME/mpfr
   unpack $GMP_FILE
   mv $TEMP_DIR/$GMP_NAME $TEMP_DIR/$GCC_NAME/gmp
+  BUILD_DIR=$TEMP_DIR/$GCC_NAME-build
+  mkdir $BUILD_DIR
 
-  (cd $TEMP_DIR/$GCC_NAME; build --enable-languages=c,c++ --target=$TARGET --enable-threads=posix)
+  (cd $BUILD_DIR; build $TEMP_DIR/$GCC_NAME --enable-languages=c,c++ --target=$TARGET --enable-threads=posix)
 fi
 
 (cd $DEST_DIR; find -type f | sort | xargs md5sum > MD5SUMS)
