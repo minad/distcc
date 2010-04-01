@@ -11,7 +11,7 @@ GCC_TARGET=i686-pc-linux-gnu
 GMP_VERSION=4.3.1
 GMP_URL=ftp://ftp.gnu.org/gnu/gmp
 MPFR_VERSION=2.4.1
-MPFR_URL=http://www.mpfr.org/mpfr-current
+MPFR_URL=http://www.mpfr.org
 
 cleanup() {
   rm -rf $TEMP_DIR
@@ -36,9 +36,9 @@ build() {
   echo "Configuring..."
   ./configure --prefix $DEST_DIR "$@" || die "Configure failed"
   echo "Building..."
-  make # || die "Building failed"
+  make -j5 # || die "Building failed"
   echo "Installing..."
-  make install # || die "Installation failed"
+  make -j5 install # || die "Installation failed"
   rm -rf $DEST_DIR/man $DEST_DIR/share/doc $DEST_DIR/info
 }
 
@@ -84,7 +84,7 @@ GMP_URL=$GMP_URL/$GMP_NAME.tar.bz2
 
 MPFR_NAME=mpfr-$MPFR_VERSION
 MPFR_FILE=$TEMP_DIR/$MPFR_NAME.tar.bz2
-MPFR_URL=$MPFR_URL/$MPFR_NAME.tar.bz2
+MPFR_URL=$MPFR_URL/$MPFR_NAME/$MPFR_NAME.tar.bz2
 
 BINUTILS_NAME=binutils-$BINUTILS_VERSION
 BINUTILS_FILE=$TEMP_DIR/$BINUTILS_NAME.tar.bz2
